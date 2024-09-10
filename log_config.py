@@ -11,7 +11,4 @@ elif level == "WARNING":
 elif level == "ERROR":
     level = logging.ERROR
 else:
-    print(f"Unkown Log Level : {level}")
-
-logger = logging.getLogger("KFPLogger")
-logger.setLevel(level=level)
+    raise ValueError(f"Unkown Log Level : {level}")

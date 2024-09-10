@@ -1,2 +1,8 @@
 .venv
 __pycache__
+Dockerfile
+.dockerignore
+kfp_config.ini
+runtime-requirements.txt
+component_metadata/
+tmp_component.py
