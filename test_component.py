@@ -1,6 +1,6 @@
 from unittest import TestCase
 from kfp.components import PythonComponent
-from pyfunc_component import KFPythonFuncComponent
+from components import KFPythonFuncComponent
 from example_code import add
 from log_config import level
 

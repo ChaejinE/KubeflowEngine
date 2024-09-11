@@ -1,41 +1,51 @@
 from kfp import dsl
-from kfp.components import PythonComponent
+from kfp.components import PythonComponent, BaseComponent
 from typing import Callable, Any
 from log_config import level
+import abc
 
 import logging, os
 
 logging.basicConfig(level=level)
 
 
-class KFPythonFuncComponent:
-    def __init__(self, target_func: Callable) -> None:
-        # private
+class BaseKFComponent(metaclass=abc.ABCMeta):
+    def __init__(self) -> None:
         # protected
-        self._target_func: Callable = target_func
-        self._base_image: str | None = "python:3.9-slim"
-        self._registry: str | None = "129231402580.dkr.ecr.us-east-1.amazonaws.com/components_luke"
-        self._component_name: str | None = "test"
-        self._version: str | None = "v1"
-        self._target_image: str | None = f"{self._registry}:{self._component_name}-{self._version}"
-        self._kfp_package_path: str | None = None
-        self._packages_to_install: list[str] | None = None
-        self._command: str | None = "python"
-        self._arguments: list | None = []
-        self._component: PythonComponent | None = None
-        # public
+        self._prev: BaseComponent | list[BaseComponent] = []
+        self._next: BaseComponent | list[BaseComponent] = []
+        self._condition: str | None = None
+
+        self._component_name: str | None = None
+        self._component: BaseComponent | None = None
 
     @property
-    def component(self) -> PythonComponent | None:
-        return self._make_kf_component(self._target_func)
+    def prev(self) -> BaseComponent | list[BaseComponent]:
+        return self._prev
+
+    @prev.setter
+    def prev(self, previous_component: BaseComponent) -> None:
+        self._prev = previous_component
 
     @property
-    def base_image(self) -> str | None:
-        return self._base_image
+    def next(self) -> BaseComponent | list[BaseComponent]:
+        return self._next
 
-    @base_image.setter
-    def base_image(self, image_name: str):
-        self._base_image = image_name
+    @next.setter
+    def next(self, next_component: BaseComponent | list[BaseComponent]) -> None:
+        self._next = next_component
+
+    @property
+    def condition(self):
+        return self._condition
+
+    @condition.setter
+    def condition(self, condition):
+        self._condition = condition
+
+    @property
+    def component(self) -> BaseComponent | None:
+        return self._component
 
     @property
     def registry(self) -> str | None:
@@ -53,24 +63,37 @@ class KFPythonFuncComponent:
     def component_name(self, name: str):
         self._component_name = name
 
+    @abc.abstractmethod
+    def after(self):
+        pass
+
+    @abc.abstractmethod
+    def _make_kf_component(self):
+        pass
+
+
+class KFPythonFuncComponent(BaseKFComponent):
+    def __init__(self, target_func: Callable) -> None:
+        super().__init__()
+
+        # private
+        # protected
+        self._target_func: Callable = target_func
+        self._base_image: str | None = "python:3.9-slim"
+        self._registry: str | None = "129231402580.dkr.ecr.us-east-1.amazonaws.com/components_luke"
+        self._component_name: str | None = target_func.__name__
+        self._version: str | None = "v1"
+        self._target_image: str | None = f"{self._registry}:{self._component_name}-{self._version}"
+        self._kfp_package_path: str | None = None
+        self._packages_to_install: list[str] | None = None
+        self._command: str | None = "python"
+        self._arguments: list | None = []
+        self._component: PythonComponent | None = None
+        # public
+
     @property
-    def version(self) -> str | None:
-        return self._version
-
-    @version.setter
-    def version(self, version: str):
-        self._version = version
-
-    @property
-    def packages_to_install(self) -> list[str] | None:
-        return self._packages_to_install
-
-    @packages_to_install.setter
-    def packages_to_install(self, packages_list: list[str]):
-        logging.debug(
-            f"[{__class__.__name__}] The packages to install will be changed from {self._packages_to_install} to {packages_list}"
-        )
-        self._packages_to_install = packages_list
+    def component(self):
+        return self._make_kf_component(self._target_func)
 
     def set_attr_for_user(
         self,
@@ -89,6 +112,10 @@ class KFPythonFuncComponent:
         self._packages_to_install = (
             packages_to_install if isinstance(packages_to_install, list) else self._packages_to_install
         )
+
+    def after(self, obj: BaseKFComponent):
+        obj.prev.append(self)
+        self._next.append(obj)
 
     def _make_kf_component(self, target_func: Callable) -> PythonComponent | None:
         if isinstance(target_func, Callable):
@@ -119,10 +146,10 @@ class KFPythonFuncComponent:
             logging.debug(f"[{self.__class__.__name__}] Raised Error\n{e}")
             result = None
 
-        return self._target_func(*args, **kwargs)
+        return result
 
     def build_image(self, target_component_path: str) -> None:
-        logging.debug(f"[{__class__.__name__}] The component's path is a {target_component_path}")
+        logging.debug(f"[{__class__.__name__}] Components's path is a {target_component_path}")
         directory, filename = os.path.dirname(target_component_path), os.path.basename(target_component_path)
         cmd = f"kfp component build {directory} --component-filepattern {filename} --no-push-image"
         logging.info(f"[{__class__.__name__}] The build command is a '{cmd}'")
