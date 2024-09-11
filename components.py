@@ -2,8 +2,8 @@ from kfp import dsl
 from kfp.components import PythonComponent, BaseComponent
 from typing import Callable, Any
 from log_config import level
-import abc
 
+import abc
 import logging, os
 
 logging.basicConfig(level=level)
@@ -92,8 +92,12 @@ class KFPythonFuncComponent(BaseKFComponent):
         # public
 
     @property
-    def component(self):
+    def component(self) -> PythonComponent | None:
         return self._make_kf_component(self._target_func)
+
+    @property
+    def target_func(self) -> Callable:
+        return self._target_func
 
     def set_attr_for_user(
         self,
@@ -166,3 +170,6 @@ class KFPythonFuncComponent(BaseKFComponent):
         logging.info(f"[{__class__.__name__}] Push Start")
         os.system(f"{cmd}")
         logging.info(f"[{self.__class__.__name__}] Push End")
+
+    def pass_args_to_next_component(self):
+        pass
