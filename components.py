@@ -18,21 +18,22 @@ class BaseKFComponent(metaclass=abc.ABCMeta):
 
         self._component_name: str | None = None
         self._component: BaseComponent | None = None
+        self._task: dsl.PipelineTask | None = None
 
     @property
-    def prev(self) -> BaseComponent | list[BaseComponent]:
+    def prev(self) -> Any | list[Any]:
         return self._prev
 
     @prev.setter
-    def prev(self, previous_component: BaseComponent) -> None:
+    def prev(self, previous_component: Any | list[Any]) -> None:
         self._prev = previous_component
 
     @property
-    def next(self) -> BaseComponent | list[BaseComponent]:
+    def next(self) -> Any | list[Any]:
         return self._next
 
     @next.setter
-    def next(self, next_component: BaseComponent | list[BaseComponent]) -> None:
+    def next(self, next_component: Any | list[Any]) -> None:
         self._next = next_component
 
     @property
@@ -48,20 +49,20 @@ class BaseKFComponent(metaclass=abc.ABCMeta):
         return self._component
 
     @property
-    def registry(self) -> str | None:
-        return self._registry
-
-    @registry.setter
-    def registry(self, name: str):
-        self._registry = name
-
-    @property
     def component_name(self) -> str | None:
         return self._component_name
 
     @component_name.setter
     def component_name(self, name: str):
         self._component_name = name
+
+    @property
+    def task(self) -> dsl.PipelineTask | None:
+        return self._task
+
+    @task.setter
+    def task(self, task: dsl.PipelineTask) -> None:
+        self._task = task
 
     @abc.abstractmethod
     def after(self):
